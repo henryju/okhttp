@@ -1114,6 +1114,33 @@ public final class URLConnectionTest {
     assertNull(get.getHeader("Proxy-Authorization"));
   }
 
+  @Test public void proxyAuthenticateWithSystemProperty() throws Exception {
+    int retries = 10;
+    Authenticator.setDefault(new RecordingAuthenticator());
+    for (int i = 0; i < retries; i++) {
+      server.enqueue(new MockResponse().setResponseCode(407)
+        .addHeader("Proxy-Authenticate: Basic realm=\"localhost\""));
+      MockResponse mockResponse = new MockResponse().setBody("this response comes via a proxy: " + i);
+      server.enqueue(mockResponse);
+    }
+
+    System.setProperty("http.proxyHost", server.getHostName());
+    System.setProperty("http.proxyPort", Integer.toString(server.getPort()));
+    urlFactory.setClient(urlFactory.client().newBuilder()
+      .proxyAuthenticator(new JavaNetAuthenticator())
+      .build());
+
+    for (int i = 0; i < retries; i++) {
+      connection = urlFactory.open(new URL("http://android.com/foo" + i));
+      assertContent("this response comes via a proxy: " + i, connection);
+      assertTrue(connection.usingProxy());
+    }
+
+    RecordedRequest request = server.takeRequest();
+    assertEquals("GET http://android.com/foo HTTP/1.1", request.getRequestLine());
+    assertEquals("android.com", request.getHeader("Host"));
+  }
+
   // Don't disconnect after building a tunnel with CONNECT
   // http://code.google.com/p/android/issues/detail?id=37221
   @Test public void proxyWithConnectionClose() throws IOException {
