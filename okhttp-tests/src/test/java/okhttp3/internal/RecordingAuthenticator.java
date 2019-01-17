@@ -16,6 +16,7 @@
 package okhttp3.internal;
 
 import java.net.Authenticator;
+import java.net.InetAddress;
 import java.net.PasswordAuthentication;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,9 +37,10 @@ public final class RecordingAuthenticator extends Authenticator {
   }
 
   @Override protected PasswordAuthentication getPasswordAuthentication() {
+    final InetAddress requestingSite = getRequestingSite();
     this.calls.add("host=" + getRequestingHost()
         + " port=" + getRequestingPort()
-        + " site=" + getRequestingSite().getHostName()
+        + " site=" + (requestingSite != null ? requestingSite.getHostName() : "<null>")
         + " url=" + getRequestingURL()
         + " type=" + getRequestorType()
         + " prompt=" + getRequestingPrompt()
